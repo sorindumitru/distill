@@ -30,14 +30,9 @@ impl FilesystemNotifier {
 
     fn process_event(event: Event) {
         let path = event.path.unwrap();
-        match event.op.unwrap() {
-            op::CREATE => println!("CREATE {}", path.to_str().unwrap()),
-            op::REMOVE => println!("REMOVE {}", path.to_str().unwrap()),
-            op::RENAME => println!("RENAME {}", path.to_str().unwrap()),
-            op::CHMOD => println!("CHMOD {}", path.to_str().unwrap()),
-            op::WRITE => println!("WRITE {}", path.to_str().unwrap()),
-            _ => println!("Something Else"),
-        }
+        let op = event.op.unwrap();
+
+        println!("{:?} {}", op, path.to_str().unwrap());
     }
 
     pub fn process(&self) {

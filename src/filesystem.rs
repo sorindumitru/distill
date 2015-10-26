@@ -12,15 +12,15 @@ pub struct FilesystemNotifier {
 impl FilesystemNotifier {
     pub fn new() -> Option<FilesystemNotifier> {
         let (tx, rx) = mpsc::channel::<Event>();
-        let mut w: Result<RecommendedWatcher, Error> = Watcher::new(tx);
+        let w: Result<RecommendedWatcher, Error> = Watcher::new(tx);
         match w {
-            Ok(mut watcher) => {
+            Ok(watcher) => {
                 Some(FilesystemNotifier {
                     rx: rx,
                     watcher: watcher,
                 })
             },
-            Err(e) => {
+            Err(_) => {
                 None
             }
             
@@ -44,7 +44,7 @@ impl FilesystemNotifier {
         loop {
             match self.rx.recv() {
                 Ok(event) => FilesystemNotifier::process_event(event),
-                Err(e) => {
+                Err(_) => {
                     return;
                 }
             }
@@ -54,6 +54,6 @@ impl FilesystemNotifier {
 
 impl Notifier for FilesystemNotifier {
     fn add(&mut self, what: &str) {
-        self.watcher.watch(what);
+        self.watcher.watch(what).ok();
     }
 }

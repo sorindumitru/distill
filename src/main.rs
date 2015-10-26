@@ -13,8 +13,11 @@ pub trait Notifier {
     fn add(&mut self, what: &str);
 }
 
+fn process_message(_: Message) {
+}
+
 fn main() {
-    let (filesystem_tx, filesystem_rx) = mpsc::channel::<Message>();
+    let (_, filesystem_rx) = mpsc::channel::<Message>();
 
     let filesystem_thread = thread::spawn( move || {
         let mut filesystem = FilesystemNotifier::new().unwrap();
@@ -26,13 +29,17 @@ fn main() {
         loop {
             let message = match filesystem_rx.recv() {
                 Ok(m) => m,
-                Err(e) => {
+                Err(_) => {
                     return;
                 }
             };
+
+            process_message(message);
         }
     });
 
     let dres = distill_thread.join();
+    dres.ok();
     let fres = filesystem_thread.join();
+    fres.ok();
 }

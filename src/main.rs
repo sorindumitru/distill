@@ -1,7 +1,7 @@
 use std::thread;
 use std::sync::mpsc;
 
-extern crate notify;
+extern crate inotify;
 
 mod filesystem;
 
@@ -24,7 +24,7 @@ fn main() {
         filesystem.add("/home/sorin/");
         filesystem.process();
     });
-    
+
     let distill_thread = thread::spawn( move || {
         loop {
             let message = match filesystem_rx.recv() {

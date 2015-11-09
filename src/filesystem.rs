@@ -1,47 +1,78 @@
-use std::sync::mpsc;
-
-use notify::*;
+use inotify::INotify;
+use inotify::wrapper::Event;
+use inotify::ffi::*;
+use std::path::Path;
 
 use ::Notifier;
 
 pub struct FilesystemNotifier {
-    rx: mpsc::Receiver<Event>,
-    watcher: RecommendedWatcher,
+    ino: INotify,
 }
 
 impl FilesystemNotifier {
     pub fn new() -> Option<FilesystemNotifier> {
-        let (tx, rx) = mpsc::channel::<Event>();
-        let w: Result<RecommendedWatcher, Error> = Watcher::new(tx);
-        match w {
-            Ok(watcher) => {
+        let ino_res = INotify::init();
+
+        match ino_res {
+            Ok(ino) => {
                 Some(FilesystemNotifier {
-                    rx: rx,
-                    watcher: watcher,
+                    ino: ino,
                 })
             },
             Err(_) => {
                 None
             }
-            
+        }
+    }
+
+    fn process_event(event: &Event) {
+        if event.is_access() {
+            println!("Accesing {}:{}", event.name, event.cookie);
         }
 
+        if event.is_modify() {
+            println!("Modified {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_attrib() {
+            println!("Attrib {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_close_write() {
+            println!("Close write {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_close_nowrite() {
+            println!("Close nowrite {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_open() {
+            println!("Open {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_moved_from() {
+            println!("Is moved from {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_moved_to() {
+            println!("Is moved to {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_create() {
+            println!("Is create {}:{}", event.name, event.cookie);
+        }
+
+        if event.is_delete() {
+            println!("Is delete {}:{}", event.name, event.cookie);
+        }
     }
 
-    fn process_event(event: Event) {
-        let path = event.path.unwrap();
-        let op = event.op.unwrap();
-
-        println!("{:?} {}", op, path.to_str().unwrap());
-    }
-
-    pub fn process(&self) {
+    pub fn process(&mut self) {
         loop {
-            match self.rx.recv() {
-                Ok(event) => FilesystemNotifier::process_event(event),
-                Err(_) => {
-                    return;
-                }
+            let events = self.ino.wait_for_events().unwrap();
+
+            for event in events.iter() {
+                FilesystemNotifier::process_event(event);
             }
         }
     }
@@ -49,6 +80,6 @@ impl FilesystemNotifier {
 
 impl Notifier for FilesystemNotifier {
     fn add(&mut self, what: &str) {
-        self.watcher.watch(what).ok();
+        self.ino.add_watch(Path::new(what), IN_ALL_EVENTS).unwrap();
     }
 }

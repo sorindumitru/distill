@@ -10,7 +10,8 @@ use self::filesystem::FilesystemNotifier;
 pub struct Message;
 
 pub trait Notifier {
-    fn add(&mut self, what: &str);
+    fn add(&mut self, dir: &str);
+    fn add_recursive(&mut self, dir: &str);
 }
 
 fn process_message(_: Message) {
@@ -21,7 +22,8 @@ fn main() {
 
     let filesystem_thread = thread::spawn( move || {
         let mut filesystem = FilesystemNotifier::new().unwrap();
-        filesystem.add("/home/sorin/");
+        filesystem.add_recursive("/home/sorin/projects");
+        filesystem.add_recursive("/home/sorin/mainline");
         filesystem.process();
     });
 

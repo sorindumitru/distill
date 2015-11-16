@@ -1,12 +1,15 @@
 use inotify::INotify;
 use inotify::wrapper::Event;
 use inotify::ffi::*;
+use std::collections::HashMap;
+use std::fs;
 use std::path::Path;
 
 use ::Notifier;
 
 pub struct FilesystemNotifier {
     ino: INotify,
+    watches: HashMap<i32, String>,
 }
 
 impl FilesystemNotifier {
@@ -17,6 +20,7 @@ impl FilesystemNotifier {
             Ok(ino) => {
                 Some(FilesystemNotifier {
                     ino: ino,
+                    watches: HashMap::new(),
                 })
             },
             Err(_) => {
@@ -79,7 +83,42 @@ impl FilesystemNotifier {
 }
 
 impl Notifier for FilesystemNotifier {
-    fn add(&mut self, what: &str) {
-        self.ino.add_watch(Path::new(what), IN_ALL_EVENTS).unwrap();
+    fn add(&mut self, dir: &str) {
+        // TODO: Check the result and something with it
+        let watch = match self.ino.add_watch(Path::new(dir), IN_ALL_EVENTS) {
+            Ok(watch) => watch,
+            Err(_) => return,
+        };
+
+        self.watches.insert(watch, String::from(dir));
+    }
+
+    fn add_recursive(&mut self, dir: &str) {
+        let meta = match fs::metadata(dir) {
+            Ok(meta) => meta,
+            Err(_) => return,
+        };
+
+        if !meta.is_dir() {
+            return;
+        }
+
+        self.add(dir);
+
+        let dirs = match fs::read_dir(dir) {
+            Ok(dirs) => dirs,
+            Err(_) => return,
+        };
+
+        for entry in dirs {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(_) => return,
+            };
+            match entry.path().to_str() {
+                None => return,
+                Some(entry) => self.add_recursive(entry),
+            };
+        }
     }
 }
